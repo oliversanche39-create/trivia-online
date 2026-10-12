@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trivia Online</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- ══════════ HOME ══════════ -->
+    <section id="view-home" class="view active">
+      <h1>🎯 Trivia Online</h1>
+      <p class="subtitle">Preguntas random · jugá con amigos en 5 segundos</p>
+      <div class="menu">
+        <button id="btn-show-create" class="btn primary">Crear sala</button>
+        <div class="divider">o</div>
+        <input id="join-code" class="input code" placeholder="CÓDIGO" maxlength="4" autocomplete="off">
+        <input id="join-name" class="input" placeholder="Tu nombre" maxlength="20" autocomplete="off">
+        <button id="btn-join" class="btn secondary">Unirse</button>
+      </div>
+      <p id="home-error" class="error"></p>
+    </section>
+
+    <!-- ══════════ CREAR SALA ══════════ -->
+    <section id="view-create" class="view">
+      <h1>Nueva sala</h1>
+      <input id="create-name" class="input" placeholder="Tu nombre" maxlength="20" autocomplete="off">
+      <div class="settings">
+        <label>Preguntas: <span id="lbl-questions">10</span></label>
+        <input id="set-questions" type="range" min="3" max="30" value="10">
+        <label>Segundos por pregunta: <span id="lbl-time">20</span></label>
+        <input id="set-time" type="range" min="5" max="60" step="5" value="20">
+      </div>
+      <div class="row">
+        <button id="btn-back-home" class="btn ghost">← Volver</button>
+        <button id="btn-create" class="btn primary">Crear 🎮</button>
+      </div>
+      <p id="create-error" class="error"></p>
+    </section>
+
+    <!-- ══════════ LOBBY ══════════ -->
+    <section id="view-lobby" class="view">
+      <div class="code-card">
+        <p class="code-label">Código de sala</p>
+        <h2 id="lobby-code" class="code-big">----</h2>
+        <p class="hint">Compartí este código para que se unan</p>
+      </div>
+      <div class="settings-inline" id="lobby-settings">
+        <label>Preguntas: <span id="lobby-questions">10</span></label>
+        <label>Segs/pregunta: <span id="lobby-time">20</span></label>
+      </div>
+      <div class="settings-inline host-only hidden" id="lobby-settings-edit">
+        <div>
+          <label>Preguntas: <span id="lbl-questions-lobby">10</span></label>
+          <input id="set-questions-lobby" type="range" min="3" max="30" value="10">
+        </div>
+        <div>
+          <label>Segs/pregunta: <span id="lbl-time-lobby">20</span></label>
+          <input id="set-time-lobby" type="range" min="5" max="60" step="5" value="20">
+        </div>
+      </div>
+      <h3>Jugadores (<span id="players-count">1</span>)</h3>
+      <ul id="players-list" class="players"></ul>
+      <div class="row">
+        <button id="btn-leave" class="btn ghost">Salir</button>
+        <button id="btn-start" class="btn primary host-only hidden">▶ Empezar</button>
+      </div>
+      <p id="lobby-msg" class="error"></p>
+    </section>
+
+    <!-- ══════════ JUEGO ══════════ -->
+    <section id="view-game" class="view">
+      <div class="game-top">
+        <span id="q-progress">1/10</span>
+        <span id="q-timer">20s</span>
+      </div>
+      <div class="progress-bar"><div id="timer-bar"></div></div>
+      <div class="score-strip" id="score-strip"></div>
+      <div class="q-card">
+        <p id="q-category" class="q-category"></p>
+        <h2 id="q-text">...</h2>
+      </div>
+      <div class="options">
+        <button class="option" data-idx="0"></button>
+        <button class="option" data-idx="1"></button>
+        <button class="option" data-idx="2"></button>
+        <button class="option" data-idx="3"></button>
+      </div>
+      <p id="answered-note" class="hint"></p>
+    </section>
+
+    <!-- ══════════ RESULTADOS DE RONDA ══════════ -->
+    <section id="view-round" class="view">
+      <h1 id="round-title">Ronda</h1>
+      <p class="q-answer" id="round-answer"></p>
+      <ul id="round-list" class="players"></ul>
+      <p class="hint">Siguiente pregunta en unos segundos…</p>
+    </section>
+
+    <!-- ══════════ FINAL ══════════ -->
+    <section id="view-end" class="view">
+      <h1>🏆 Resultados</h1>
+      <ul id="end-list" class="players big"></ul>
+      <div class="row">
+        <button id="btn-play-again" class="btn primary host-only hidden">🔁 Revancha</button>
+        <button id="btn-exit" class="btn ghost">Salir</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
