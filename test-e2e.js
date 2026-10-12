@@ -2,7 +2,7 @@
 // npm i socket.io-client y luego node test-e2e.js
 const { io } = require('socket.io-client');
 
-const URL = 'http://localhost:3000';
+const URL = 'https://trivia-online-5ylo.onrender.com';
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 function once(sock, ev, timeout = 5000) {
