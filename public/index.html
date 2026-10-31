@@ -2,35 +2,47 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trivia Online</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Trivia Online · quién pregunta a quién</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div id="app">
     <!-- ══════════ HOME ══════════ -->
     <section id="view-home" class="view active">
-      <h1>🎯 Trivia Online</h1>
-      <p class="subtitle">Preguntas random · jugá con amigos en 5 segundos</p>
+      <header class="topbar">
+        <p class="brand">TRIVIA <span class="neon-green">ONLINE</span></p>
+        <p class="date-line">El juego elige quién pregunta a quién 👀</p>
+      </header>
       <div class="menu">
         <button id="btn-show-create" class="btn primary">Crear sala</button>
         <div class="divider">o</div>
-        <input id="join-code" class="input code" placeholder="CÓDIGO" maxlength="4" autocomplete="off">
+        <input id="join-code" class="input code" placeholder="CÓDIGO" maxlength="4" autocomplete="off" inputmode="text">
         <input id="join-name" class="input" placeholder="Tu nombre" maxlength="20" autocomplete="off">
-        <button id="btn-join" class="btn secondary">Unirse</button>
+        <button id="btn-join" class="btn cyan">Unirme con el código</button>
       </div>
       <p id="home-error" class="error"></p>
     </section>
 
     <!-- ══════════ CREAR SALA ══════════ -->
     <section id="view-create" class="view">
-      <h1>Nueva sala</h1>
-      <input id="create-name" class="input" placeholder="Tu nombre" maxlength="20" autocomplete="off">
-      <div class="settings">
-        <label>Preguntas: <span id="lbl-questions">10</span></label>
-        <input id="set-questions" type="range" min="3" max="30" value="10">
-        <label>Segundos por pregunta: <span id="lbl-time">20</span></label>
-        <input id="set-time" type="range" min="5" max="60" step="5" value="20">
+      <header class="topbar">
+        <p class="brand brand-sm">NUEVA <span class="neon-green">SALA</span></p>
+      </header>
+      <div class="card">
+        <p class="card-title"><span class="dot dot-green"></span>TU NOMBRE</p>
+        <input id="create-name" class="input" placeholder="Tu nombre" maxlength="20" autocomplete="off">
+      </div>
+      <div class="card">
+        <p class="card-title"><span class="dot dot-cyan"></span>AJUSTES <span class="opt">(podés cambiarlos en el lobby)</span></p>
+        <div class="field">
+          <label>Rondas <span id="lbl-rounds">15</span></label>
+          <input id="set-rounds" type="range" min="5" max="50" step="5" value="15">
+        </div>
+        <div class="field">
+          <label>Tiempo para responder <span id="lbl-time">30s</span></label>
+          <input id="set-time" type="range" min="0" max="120" step="15" value="30">
+        </div>
       </div>
       <div class="row">
         <button id="btn-back-home" class="btn ghost">← Volver</button>
@@ -43,25 +55,37 @@
     <section id="view-lobby" class="view">
       <div class="code-card">
         <p class="code-label">Código de sala</p>
-        <h2 id="lobby-code" class="code-big">----</h2>
+        <h2 id="lobby-code" class="code-big neon-cyan">----</h2>
         <p class="hint">Compartí este código para que se unan</p>
       </div>
-      <div class="settings-inline" id="lobby-settings">
-        <label>Preguntas: <span id="lobby-questions">10</span></label>
-        <label>Segs/pregunta: <span id="lobby-time">20</span></label>
-      </div>
-      <div class="settings-inline host-only hidden" id="lobby-settings-edit">
-        <div>
-          <label>Preguntas: <span id="lbl-questions-lobby">10</span></label>
-          <input id="set-questions-lobby" type="range" min="3" max="30" value="10">
+
+      <div class="card">
+        <p class="card-title"><span class="dot dot-yellow"></span>TEMA <span class="opt host-only hidden">(elegí tocando una tarjeta)</span></p>
+        <div id="theme-grid" class="theme-grid">
+          <p class="hint">Cargando temas…</p>
         </div>
-        <div>
-          <label>Segs/pregunta: <span id="lbl-time-lobby">20</span></label>
-          <input id="set-time-lobby" type="range" min="5" max="60" step="5" value="20">
-        </div>
+        <p class="theme-selected" id="theme-selected"></p>
       </div>
-      <h3>Jugadores (<span id="players-count">1</span>)</h3>
-      <ul id="players-list" class="players"></ul>
+
+      <div class="card">
+        <p class="card-title"><span class="dot dot-green"></span>AJUSTES</p>
+        <div class="settings-edit host-only hidden">
+          <div class="field">
+            <label>Rondas <span id="lbl-rounds-lobby">15</span></label>
+            <input id="set-rounds-lobby" type="range" min="5" max="50" step="5" value="15">
+          </div>
+          <div class="field">
+            <label>Tiempo para responder <span id="lbl-time-lobby">30s</span></label>
+            <input id="set-time-lobby" type="range" min="0" max="120" step="15" value="30">
+          </div>
+        </div>
+        <p class="settings-view" id="lobby-settings-view"></p>
+      </div>
+
+      <div class="card">
+        <p class="card-title"><span class="dot dot-cyan"></span>JUGADORES (<span id="players-count">1</span>)</p>
+        <ul id="players-list" class="players"></ul>
+      </div>
       <div class="row">
         <button id="btn-leave" class="btn ghost">Salir</button>
         <button id="btn-start" class="btn primary host-only hidden">▶ Empezar</button>
@@ -72,35 +96,45 @@
     <!-- ══════════ JUEGO ══════════ -->
     <section id="view-game" class="view">
       <div class="game-top">
-        <span id="q-progress">1/10</span>
-        <span id="q-timer">20s</span>
+        <span id="q-progress">Ronda 1/15</span>
+        <span id="q-theme" class="theme-chip">🔥 Calientes</span>
+        <span id="q-timer">30s</span>
       </div>
-      <div class="progress-bar"><div id="timer-bar"></div></div>
-      <div class="score-strip" id="score-strip"></div>
-      <div class="q-card">
-        <p id="q-category" class="q-category"></p>
-        <h2 id="q-text">...</h2>
-      </div>
-      <div class="options">
-        <button class="option" data-idx="0"></button>
-        <button class="option" data-idx="1"></button>
-        <button class="option" data-idx="2"></button>
-        <button class="option" data-idx="3"></button>
-      </div>
-      <p id="answered-note" class="hint"></p>
-    </section>
+      <div class="progress-bar" id="timer-wrap"><div id="timer-bar"></div></div>
 
-    <!-- ══════════ RESULTADOS DE RONDA ══════════ -->
-    <section id="view-round" class="view">
-      <h1 id="round-title">Ronda</h1>
-      <p class="q-answer" id="round-answer"></p>
-      <ul id="round-list" class="players"></ul>
-      <p class="hint">Siguiente pregunta en unos segundos…</p>
+      <div class="deal-card" id="deal-card">
+        <p class="deal-label">hablando…</p>
+        <p class="deal-line">
+          <span class="asker" id="deal-asker">—</span>
+          <span class="arrow">➜</span>
+          <span class="target" id="deal-target">—</span>
+        </p>
+        <p class="deal-help" id="deal-help">preparando la ronda…</p>
+      </div>
+
+      <div class="q-card">
+        <p id="q-text" class="q-text">…</p>
+      </div>
+
+      <div id="answer-zone">
+        <button id="btn-answered" class="btn good big hidden">✅ Ya respondí</button>
+        <p id="waiting-note" class="hint" style="text-align:center"></p>
+      </div>
+
+      <div class="host-controls row host-only hidden">
+        <button id="btn-skip" class="btn ghost">⏭️ Saltar</button>
+        <button id="btn-finish" class="btn ghost">🏁 Terminar</button>
+      </div>
+
+      <div class="score-strip" id="score-strip"></div>
     </section>
 
     <!-- ══════════ FINAL ══════════ -->
     <section id="view-end" class="view">
-      <h1>🏆 Resultados</h1>
+      <header class="topbar">
+        <p class="brand brand-sm">SE <span class="neon-cyan">TERMINÓ</span></p>
+        <p class="date-line">Veces que le tocó contestar a cada uno</p>
+      </header>
       <ul id="end-list" class="players big"></ul>
       <div class="row">
         <button id="btn-play-again" class="btn primary host-only hidden">🔁 Revancha</button>

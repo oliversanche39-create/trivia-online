@@ -1,71 +1,139 @@
-// Prueba end-to-end del juego de trivia
-// npm i socket.io-client y luego node test-e2e.js
+// Prueba e2e del juego: host + guest contra un servidor (local o producción)
+// Recolectores creados ANTES de emitir: sin carreras de registro de listeners
 const { io } = require('socket.io-client');
 
-const URL = 'https://trivia-online-5ylo.onrender.com';
-const wait = ms => new Promise(r => setTimeout(r, ms));
+const URL = process.argv[2] || (process.env.REMOTE ? 'https://trivia-online-5ylo.onrender.com' : 'http://localhost:3000');
+console.log('→ probando contra', URL);
 
-function once(sock, ev, timeout = 5000) {
-  return new Promise((res, rej) => {
-    const t = setTimeout(() => rej(new Error('timeout esperando ' + ev)), timeout);
-    sock.once(ev, d => { clearTimeout(t); res(d); });
+const TOTAL_ROUNDS = 3;
+let ok = true;
+const check = (cond, msg) => {
+  console.log((cond ? '  OK  ' : '  FAIL ') + msg);
+  if (!cond) ok = false;
+};
+
+function client() {
+  return io(URL, { transports: ['websocket', 'polling'], reconnection: false, timeout: 15000 });
+}
+
+// recolector: acumula eventos y espera el primero que cumpla un predicado
+function collector(cl, event) {
+  const buf = [];
+  const waiting = [];
+  cl.on(event, data => {
+    for (let i = 0; i < waiting.length; i++) {
+      const { pred, res } = waiting[i];
+      try { if (pred(data)) { waiting.splice(i, 1); res(data); return; } } catch { }
+    }
+    buf.push(data);
   });
+  const waitFor = (pred, ms = 15000) => new Promise((resolve, reject) => {
+    for (let i = 0; i < buf.length; i++) {
+      try {
+        if (pred(buf[i])) { const d = buf[i]; buf.splice(i, 1); return resolve(d); }
+      } catch { }
+    }
+    waiting.push({ pred, res: resolve });
+    setTimeout(() => reject(new Error('timeout esperando ' + event)), ms);
+  });
+  return { waitFor, buf };
 }
 
 async function main() {
-  console.log('→ conectando jugadores falsos…');
-  const host = io(URL);
-  const guest = io(URL);
-  let questions = 0;
-  let answers = 0;
-  let results = 0;
-  let finished = false;
+  const host = client();
+  const guest = client();
 
-  host.on('newRound', d => {
-    questions++;
-    console.log(`P${d.qIndex + 1}/${d.total}: ${d.q.slice(0, 70)}…`);
-    const pick = Math.floor(Math.random() * d.options.length);
-    setTimeout(() => host.emit('answer', { code: hostState.code, optionIndex: pick }), 500 + Math.random() * 1500);
+  await Promise.all([
+    new Promise(r => host.once('connect', r)),
+    new Promise(r => guest.once('connect', r)),
+  ]);
+
+  const C = {
+    created: collector(host, 'roomCreated'),
+    joinedG: collector(guest, 'roomJoined'),
+    updH: collector(host, 'roomUpdate'),
+    startH: collector(host, 'gameStarted'),
+    startG: collector(guest, 'gameStarted'),
+    newRoundG: collector(guest, 'newRound'),
+    endH: collector(host, 'roundEnded'),
+    endG: collector(guest, 'roundEnded'),
+    finH: collector(host, 'gameFinished'),
+    finG: collector(guest, 'gameFinished'),
+    backH: collector(host, 'backToLobby'),
+    backG: collector(guest, 'backToLobby'),
+  };
+
+  // 1) crear sala
+  host.emit('createRoom', {
+    name: 'Anfitrión',
+    settings: { rounds: TOTAL_ROUNDS, timePerAnswer: 5 },
   });
-  host.on('roundResults', () => results++);
-  host.on('gameFinished', ({ standings }) => {
-    finished = true;
-    console.log('\n✔ Partida terminada. Podio:');
-    standings.forEach(s => console.log(`  ${s.rank}. ${s.name} — ${s.score} pts`));
-    console.log(`\nStats: ${questions} preguntas, ${results} rondas resueltas`);
-    const ok = questions >= 3 && results === questions && finished;
-    console.log(ok ? '✔✔ TEST OK' : '✘ TEST FALLÓ');
-    process.exit(ok ? 0 : 1);
-  });
+  const { code, room: r0, youId } = await C.created.waitFor(d => d.code, 15000);
+  check(youId === host.id, 'recibido youId del host');
+  check(r0.rounds === TOTAL_ROUNDS, 'rondas guardadas');
+  check(r0.timePerAnswer === 5, 'tiempo por respuesta guardado');
 
-  const hostState = { code: null };
-  // (necesitamos el código antes; guardamos referencia mutables)
-  host.on('newRound', d => { /* usa hostState.code */ });
-  guest.on('newRound', d => {
-    const pick = Math.floor(Math.random() * d.options.length);
-    setTimeout(() => guest.emit('answer', { code: guestState.code, optionIndex: pick }), 800 + Math.random() * 2000);
-  });
+  // 2) unirse
+  guest.emit('joinRoom', { code, name: 'Invitado' });
+  await C.joinedG.waitFor(d => d.code === code, 15000);
+  const upJoin = await C.updH.waitFor(d => d.players && d.players.length === 2, 15000);
+  check(upJoin.code === code, 'host ve la sala con 2 jugadores');
 
-  const guestState = { code: null };
+  // 3) cambiar tema
+  host.emit('updateSettings', { code, theme: 'siono', rounds: TOTAL_ROUNDS, timePerAnswer: 0 });
+  const up = await C.updH.waitFor(d => d.theme && d.theme.key === 'siono', 15000);
+  check(up.theme.key === 'siono', 'tema cambiado a siono');
 
-  await once(host, 'connect');
-  await once(guest, 'connect');
+  // 4) empezar · 3 rondas · cada ronda la confirma su objetivo
+  host.emit('startGame', { code });
+  await Promise.all([C.startH.waitFor(() => true), C.startG.waitFor(() => true)]);
+  console.log('  OK  gameStarted en ambos');
 
-  console.log('→ host crea sala…');
-  host.emit('createRoom', { name: 'HostBot', settings: { numQuestions: 5, timePerQ: 10 } });
-  const created = await once(host, 'roomCreated');
-  hostState.code = created.code;
-  console.log('  código:', created.code);
+  const seenTargets = new Set();
+  for (let i = 1; i <= TOTAL_ROUNDS; i++) {
+    const nr = await C.newRoundG.waitFor(d => d.roundNo, 20000);
+    check(nr.roundNo === i, `ronda ${i} llegó (roundNo=${nr.roundNo})`);
+    check(nr.theme.key === 'siono', 'tema correcto en la ronda');
+    check(typeof nr.question === 'string' && nr.question.length > 10, 'pregunta con texto');
+    check(nr.asker && nr.target, 'asker y target asignados');
+    check(nr.asker.id !== nr.target.id, 'el que pregunta no responde');
+    check(nr.time === 0, 'sin límite de tiempo reflejado');
+    seenTargets.add(nr.target.id);
 
-  console.log('→ guest se une…');
-  guest.emit('joinRoom', { code: created.code, name: 'GuestBot' });
-  await once(guest, 'roomJoined');
-  console.log('  guest unido');
+    // confirma quien sea el objetivo; esperamos roundEnded en cualquiera
+    const targetCl = nr.target.id === host.id ? host : guest;
+    targetCl.emit('confirmAnswered', { code });
+    await Promise.race([
+      C.endH.waitFor(d => d.roundNo === i && d.confirmed),
+      C.endG.waitFor(d => d.roundNo === i && d.confirmed),
+    ]);
+    console.log(`  OK  ronda ${i} cerrada por confirmación`);
+  }
+  check(seenTargets.size === 2, 'ambos jugadores recibieron preguntas');
 
-  console.log('→ host arranca partida…');
-  host.emit('startGame', { code: created.code });
-  const finEv = once(host, 'gameFinished', 120000);
-  await finEv;
+  // 5) fin de partida automático
+  const fin = await Promise.race([
+    C.finH.waitFor(d => d.standings && d.standings.length === 2, 10000),
+    C.finG.waitFor(d => d.standings && d.standings.length === 2, 10000),
+  ]);
+  check(fin && fin.standings.length === 2, 'podio final con ambos');
+
+  // 6) revancha
+  host.emit('playAgain', { code });
+  await Promise.all([
+    C.backH.waitFor(() => true),
+    C.backG.waitFor(() => true),
+    C.updH.waitFor(d => d.state === 'lobby', 15000),
+  ]);
+  console.log('  OK  revancha: backToLobby + roomUpdate recibidos');
+
+  host.close();
+  guest.close();
+  console.log(ok ? '\nTEST OK' : '\nTEST FALLO');
+  process.exit(ok ? 0 : 1);
 }
 
-main().catch(e => { console.error('FALLO:', e.message); process.exit(1); });
+main().catch(e => {
+  console.error('ERROR:', e.message);
+  process.exit(1);
+});

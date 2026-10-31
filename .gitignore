@@ -1,3 +1,5 @@
 node_modules/
 .env
 *.log
+data/pdf_text*.txt
+server.log
